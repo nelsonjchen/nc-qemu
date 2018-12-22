@@ -11,3 +11,5 @@ set -e
 make -j 2
 
 file x86_64-softmmu/qemu-system-x86_64.exe
+
+x86_64-softmmu/qemu-system-x86_64.exe --version
