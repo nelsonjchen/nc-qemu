@@ -40,3 +40,7 @@ jobs:
           MSYS2_ARCH: $(MSYS2_ARCH)
           MSYSTEM: $(MSYSTEM)
           CHERE_INVOKING: yes
+      - task: ArchiveFiles@2
+        inputs:
+          rootFolderOrFile: "out"
+      - task: PublishBuildArtifacts@1
