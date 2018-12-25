@@ -14,7 +14,7 @@ then
   ln -sfn /mingw64/bin/libgdk-3-0.dll dll/w64/libgdk-3-0.dll
   ln -sfn /mingw64/bin/libgdk_pixbuf-2.0-0.dll dll/w64/libgdk_pixbuf-2.0-0.dll
   ln -sfn /mingw64/bin/libglib-2.0-0.dll dll/w64/libglib-2.0-0.dll
-  # Include WHPX
+  # WHPX is only supported on 64 bit Windows.
   WINSDK="/c/Program Files (x86)/Windows Kits/10"
   WINSDKVER=10.0.17134.0
   cp "$WINSDK/Include/$WINSDKVER/um/"WinHv* /mingw64/include
@@ -31,16 +31,23 @@ elif [ "$MSYS2_ARCH" = "i686" ];
   cp dll/w32/*.dll out/
 fi 
 
+CONFIGURE_ARGS=()
+CONFIGURE_ARGS+=(--enable-gtk)
+CONFIGURE_ARGS+=(--enable-sdl)
+CONFIGURE_ARGS+=(--target-list=x86_64-softmmu)
+# WHPX is only supported on 64 bit Windows.
+if [ "$MSYS2_ARCH" = "x86_64" ]; then
+  CONFIGURE_ARGS+=(--enable-whpx)
+fi
 # Stack protector disabled for windows to work around crashing issue
 # https://www.mail-archive.com/qemu-devel@nongnu.org/msg556517.html
-./configure \
-  --enable-gtk \
-  --enable-sdl \
-  --enable-whpx \
-  --target-list=x86_64-softmmu \
-  --prefix=out \
-  --disable-stack-protector \
-  --disable-werror
+CONFIGURE_ARGS+=(--disable-stack-protector)
+# Write to Out
+CONFIGURE_ARGS+=(--prefix=out)
+# Per https://qemu.weilnetz.de/doc/BUILD.txt's guidance.
+CONFIGURE_ARGS+=(--disable-werror)
+
+./configure "${CONFIGURE_ARGS[@]}"
 
 MAKE_JOB_COUNT="${NUMBER_OF_PROCESSORS:-2}"
 
