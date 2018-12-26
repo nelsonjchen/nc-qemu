@@ -43,4 +43,5 @@ jobs:
       - task: ArchiveFiles@2
         inputs:
           rootFolderOrFile: "out"
+          includeRootFolder: false
       - task: PublishBuildArtifacts@1
