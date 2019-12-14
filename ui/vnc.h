@@ -27,7 +27,6 @@
 #ifndef QEMU_VNC_H
 #define QEMU_VNC_H
 
-#include "qemu-common.h"
 #include "qapi/qapi-types-ui.h"
 #include "qemu/queue.h"
 #include "qemu/thread.h"
@@ -39,11 +38,13 @@
 #include "io/channel-socket.h"
 #include "io/channel-tls.h"
 #include "io/net-listener.h"
+#include "authz/base.h"
 #include <zlib.h>
 
 #include "keymaps.h"
 #include "vnc-palette.h"
 #include "vnc-enc-zrle.h"
+#include "ui/kbd-state.h"
 
 // #define _VNC_DEBUG 1
 
@@ -119,8 +120,7 @@ typedef struct VncRectStat VncRectStat;
 struct VncSurface
 {
     struct timeval last_freq_check;
-    DECLARE_BITMAP(dirty[VNC_MAX_HEIGHT],
-                   VNC_MAX_WIDTH / VNC_DIRTY_PIXELS_PER_BIT);
+    DECLARE_BITMAP(dirty[VNC_MAX_HEIGHT], VNC_DIRTY_BITS);
     VncRectStat stats[VNC_STAT_ROWS][VNC_STAT_COLS];
     pixman_image_t *fb;
     pixman_format_code_t format;
@@ -155,7 +155,7 @@ struct VncDisplay
     int lock_key_sync;
     QEMUPutLEDEntry *led;
     int ledstate;
-    int key_delay_ms;
+    QKbdState *kbd;
     QemuMutex mutex;
 
     QEMUCursor *cursor;
@@ -177,7 +177,8 @@ struct VncDisplay
     bool lossy;
     bool non_adaptive;
     QCryptoTLSCreds *tlscreds;
-    char *tlsaclname;
+    QAuthZ *tlsauthz;
+    char *tlsauthzid;
 #ifdef CONFIG_VNC_SASL
     VncDisplaySASL sasl;
 #endif
@@ -326,8 +327,6 @@ struct VncState
 
     VncReadEvent *read_handler;
     size_t read_handler_expect;
-    /* input */
-    uint8_t modifiers_state[256];
 
     bool abort;
     QemuMutex output_mutex;
@@ -526,8 +525,8 @@ gboolean vnc_client_io(QIOChannel *ioc,
                        GIOCondition condition,
                        void *opaque);
 
-size_t vnc_client_read_buf(VncState *vs, uint8_t *data, size_t datalen);
-size_t vnc_client_write_buf(VncState *vs, const uint8_t *data, size_t datalen);
+size_t vnc_client_read_buf(VncState *vs, void *data, size_t datalen);
+size_t vnc_client_write_buf(VncState *vs, const void *data, size_t datalen);
 
 /* Protocol I/O functions */
 void vnc_write(VncState *vs, const void *data, size_t len);

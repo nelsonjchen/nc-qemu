@@ -19,8 +19,7 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>. */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "disas/bfd.h"
+#include "disas/dis-asm.h"
 #include "target/cris/opcode-cris.h"
 
 #define CONST_STRNEQ(STR1,STR2) (strncmp ((STR1), (STR2), sizeof (STR2) - 1) == 0)
@@ -2576,8 +2575,10 @@ print_insn_cris_generic (bfd_vma memaddr,
 
   nbytes = info->buffer_length ? info->buffer_length
                                : MAX_BYTES_PER_CRIS_INSN;
-  nbytes = MIN(nbytes, MAX_BYTES_PER_CRIS_INSN);
-  status = (*info->read_memory_func) (memaddr, buffer, nbytes, info);  
+  if (nbytes > MAX_BYTES_PER_CRIS_INSN) {
+	  nbytes = MAX_BYTES_PER_CRIS_INSN;
+  }
+  status = (*info->read_memory_func) (memaddr, buffer, nbytes, info);
 
   /* If we did not get all we asked for, then clear the rest.
      Hopefully this makes a reproducible result in case of errors.  */

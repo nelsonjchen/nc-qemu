@@ -102,10 +102,15 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "French"
 !insertmacro MUI_LANGUAGE "German"
+!insertmacro MUI_LANGUAGE "Italian"
+!insertmacro MUI_LANGUAGE "Spanish"
 
 ;--------------------------------
 
 ; The stuff to install.
+;
+; Remember to keep the "Uninstall" section in sync.
+
 Section "${PRODUCT} (required)"
 
     SectionIn RO
@@ -119,16 +124,26 @@ Section "${PRODUCT} (required)"
     File "${SRCDIR}\README"
     File "${SRCDIR}\VERSION"
 
-    File "${BINDIR}\*.bmp"
     File "${BINDIR}\*.bin"
     File "${BINDIR}\*.dtb"
+    File "${BINDIR}\*.fd"
+    File "${BINDIR}\*.img"
+    File "${BINDIR}\*.lid"
+    File "${BINDIR}\*.ndrv"
     File "${BINDIR}\*.rom"
     File "${BINDIR}\openbios-*"
+    File "${BINDIR}\palcode-clipper"
+    File "${BINDIR}\u-boot.e500"
+    File "${BINDIR}\icons\hicolor\scalable\apps\qemu.svg"
 
     File /r "${BINDIR}\keymaps"
 !ifdef CONFIG_GTK
     File /r "${BINDIR}\share"
 !endif
+
+    SetOutPath "$INSTDIR\lib\gdk-pixbuf-2.0\2.10.0"
+    FileOpen $0 "loaders.cache" w
+    FileClose $0
 
 !ifdef W64
     SetRegView 64
@@ -150,6 +165,8 @@ SectionEnd
 
 Section "Tools" SectionTools
     SetOutPath "$INSTDIR"
+    File "${BINDIR}\qemu-edid.exe"
+    File "${BINDIR}\qemu-ga.exe"
     File "${BINDIR}\qemu-img.exe"
     File "${BINDIR}\qemu-io.exe"
 SectionEnd
@@ -159,6 +176,15 @@ SectionGroup "System Emulations" SectionSystem
 !include "${BINDIR}\system-emulations.nsh"
 
 SectionGroupEnd
+
+Section "Desktop icons" SectionGnome
+    SetOutPath "$INSTDIR\share"
+!ifdef W64
+    File /r /usr/x86_64-w64-mingw32/sys-root/mingw/share/icons
+!else
+    File /r /usr/i686-w64-mingw32/sys-root/mingw/share/icons
+!endif
+SectionEnd
 
 !ifdef DLLDIR
 Section "Libraries (DLL)" SectionDll
@@ -206,18 +232,27 @@ Section "Uninstall"
     Delete "$INSTDIR\COPYING.LIB"
     Delete "$INSTDIR\README"
     Delete "$INSTDIR\VERSION"
-    Delete "$INSTDIR\*.bmp"
     Delete "$INSTDIR\*.bin"
     Delete "$INSTDIR\*.dll"
     Delete "$INSTDIR\*.dtb"
+    Delete "$INSTDIR\*.fd"
+    Delete "$INSTDIR\*.img"
+    Delete "$INSTDIR\*.lid"
+    Delete "$INSTDIR\*.ndrv"
     Delete "$INSTDIR\*.rom"
     Delete "$INSTDIR\openbios-*"
-    Delete "$INSTDIR\qemu-img.exe"
+    Delete "$INSTDIR\palcode-clipper"
+    Delete "$INSTDIR\u-boot.e500"
+    Delete "$INSTDIR\qemu.svg"
     Delete "$INSTDIR\qemu-io.exe"
+    Delete "$INSTDIR\qemu-img.exe"
+    Delete "$INSTDIR\qemu-ga.exe"
+    Delete "$INSTDIR\qemu-edid.exe"
     Delete "$INSTDIR\qemu.exe"
     Delete "$INSTDIR\qemu-system-*.exe"
     Delete "$INSTDIR\qemu-doc.html"
     RMDir /r "$INSTDIR\keymaps"
+    RMDir /r "$INSTDIR\lib"
     RMDir /r "$INSTDIR\share"
     ; Remove generated files
     Delete "$INSTDIR\stderr.txt"
@@ -231,19 +266,18 @@ SectionEnd
 
 ; Descriptions (mouse-over).
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+    !insertmacro MUI_DESCRIPTION_TEXT ${SectionGnome}   "GNOME desktop icon theme."
     !insertmacro MUI_DESCRIPTION_TEXT ${SectionSystem}  "System emulation."
     !insertmacro MUI_DESCRIPTION_TEXT ${Section_alpha}  "Alpha system emulation."
-    !insertmacro MUI_DESCRIPTION_TEXT ${Section_alphaw} "Alpha system emulation (GUI)."
     !insertmacro MUI_DESCRIPTION_TEXT ${Section_i386}   "PC i386 system emulation."
-    !insertmacro MUI_DESCRIPTION_TEXT ${Section_i386w}  "PC i386 system emulation (GUI)."
-    !insertmacro MUI_DESCRIPTION_TEXT ${SectionTools} "Tools."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SectionTools}   "Tools."
 !ifdef DLLDIR
-    !insertmacro MUI_DESCRIPTION_TEXT ${SectionDll}   "Runtime Libraries (DLL)."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SectionDll}     "Runtime Libraries (DLL)."
 !endif
 !ifdef CONFIG_DOCUMENTATION
-    !insertmacro MUI_DESCRIPTION_TEXT ${SectionDoc}   "Documentation."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SectionDoc}     "Documentation."
 !endif
-    !insertmacro MUI_DESCRIPTION_TEXT ${SectionMenu}  "Menu entries."
+    !insertmacro MUI_DESCRIPTION_TEXT ${SectionMenu}    "Menu entries."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------

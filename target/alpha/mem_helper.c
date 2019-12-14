@@ -47,11 +47,12 @@ void alpha_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     cpu_loop_exit(cs);
 }
 
-void alpha_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
-                                     vaddr addr, unsigned size,
-                                     MMUAccessType access_type,
-                                     int mmu_idx, MemTxAttrs attrs,
-                                     MemTxResult response, uintptr_t retaddr)
+void QEMU_NORETURN
+alpha_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
+                                vaddr addr, unsigned size,
+                                MMUAccessType access_type,
+                                int mmu_idx, MemTxAttrs attrs,
+                                MemTxResult response, uintptr_t retaddr)
 {
     AlphaCPU *cpu = ALPHA_CPU(cs);
     CPUAlphaState *env = &cpu->env;
@@ -61,21 +62,5 @@ void alpha_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
     cs->exception_index = EXCP_MCHK;
     env->error_code = 0;
     cpu_loop_exit_restore(cs, retaddr);
-}
-
-/* try to fill the TLB and return an exception if error. If retaddr is
-   NULL, it means that the function was called in C code (i.e. not
-   from generated code or from helper.c) */
-/* XXX: fix it to restore all registers */
-void tlb_fill(CPUState *cs, target_ulong addr, int size,
-              MMUAccessType access_type, int mmu_idx, uintptr_t retaddr)
-{
-    int ret;
-
-    ret = alpha_cpu_handle_mmu_fault(cs, addr, size, access_type, mmu_idx);
-    if (unlikely(ret != 0)) {
-        /* Exception index and error code are already set */
-        cpu_loop_exit_restore(cs, retaddr);
-    }
 }
 #endif /* CONFIG_USER_ONLY */

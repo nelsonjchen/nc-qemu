@@ -19,7 +19,6 @@
 #ifndef CPU_ALL_H
 #define CPU_ALL_H
 
-#include "qemu-common.h"
 #include "exec/cpu-common.h"
 #include "exec/memory.h"
 #include "qemu/thread.h"
@@ -159,9 +158,9 @@ static inline void tswap64s(uint64_t *s)
 /* On some host systems the guest address space is reserved on the host.
  * This allows the guest address space to be offset to a convenient location.
  */
-extern unsigned long guest_base;
+extern uintptr_t guest_base;
 extern int have_guest_base;
-extern unsigned long reserved_va;
+extern uintptr_t reserved_va;
 
 #if HOST_LONG_BITS <= TARGET_VIRT_ADDR_SPACE_BITS
 #define GUEST_ADDR_MAX (~0ul)
@@ -254,7 +253,7 @@ extern intptr_t qemu_host_page_mask;
 void page_dump(FILE *f);
 
 typedef int (*walk_memory_regions_fn)(void *, target_ulong,
-                                      target_ulong, unsigned long);
+                                      target_ulong, abi_ulong);
 int walk_memory_regions(void *, walk_memory_regions_fn);
 
 int page_get_flags(target_ulong address);
@@ -362,13 +361,82 @@ static inline bool tlb_hit(target_ulong tlb_addr, target_ulong addr)
     return tlb_hit_page(tlb_addr, addr & TARGET_PAGE_MASK);
 }
 
-void dump_exec_info(FILE *f, fprintf_function cpu_fprintf);
-void dump_opcount_info(FILE *f, fprintf_function cpu_fprintf);
+void dump_exec_info(void);
+void dump_opcount_info(void);
 #endif /* !CONFIG_USER_ONLY */
 
 int cpu_memory_rw_debug(CPUState *cpu, target_ulong addr,
-                        uint8_t *buf, int len, int is_write);
+                        uint8_t *buf, target_ulong len, int is_write);
 
 int cpu_exec(CPUState *cpu);
+
+/**
+ * cpu_set_cpustate_pointers(cpu)
+ * @cpu: The cpu object
+ *
+ * Set the generic pointers in CPUState into the outer object.
+ */
+static inline void cpu_set_cpustate_pointers(ArchCPU *cpu)
+{
+    cpu->parent_obj.env_ptr = &cpu->env;
+    cpu->parent_obj.icount_decr_ptr = &cpu->neg.icount_decr;
+}
+
+/**
+ * env_archcpu(env)
+ * @env: The architecture environment
+ *
+ * Return the ArchCPU associated with the environment.
+ */
+static inline ArchCPU *env_archcpu(CPUArchState *env)
+{
+    return container_of(env, ArchCPU, env);
+}
+
+/**
+ * env_cpu(env)
+ * @env: The architecture environment
+ *
+ * Return the CPUState associated with the environment.
+ */
+static inline CPUState *env_cpu(CPUArchState *env)
+{
+    return &env_archcpu(env)->parent_obj;
+}
+
+/**
+ * env_neg(env)
+ * @env: The architecture environment
+ *
+ * Return the CPUNegativeOffsetState associated with the environment.
+ */
+static inline CPUNegativeOffsetState *env_neg(CPUArchState *env)
+{
+    ArchCPU *arch_cpu = container_of(env, ArchCPU, env);
+    return &arch_cpu->neg;
+}
+
+/**
+ * cpu_neg(cpu)
+ * @cpu: The generic CPUState
+ *
+ * Return the CPUNegativeOffsetState associated with the cpu.
+ */
+static inline CPUNegativeOffsetState *cpu_neg(CPUState *cpu)
+{
+    ArchCPU *arch_cpu = container_of(cpu, ArchCPU, parent_obj);
+    return &arch_cpu->neg;
+}
+
+/**
+ * env_tlb(env)
+ * @env: The architecture environment
+ *
+ * Return the CPUTLB state associated with the environment.
+ */
+static inline CPUTLB *env_tlb(CPUArchState *env)
+{
+    return &env_neg(env)->tlb;
+}
 
 #endif /* CPU_ALL_H */

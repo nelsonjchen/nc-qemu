@@ -20,7 +20,7 @@
 #ifndef EXEC_TB_HASH_H
 #define EXEC_TB_HASH_H
 
-#include "exec/tb-hash-xx.h"
+#include "qemu/xxhash.h"
 
 #ifdef CONFIG_SOFTMMU
 
@@ -41,10 +41,9 @@ static inline unsigned int tb_jmp_cache_hash_page(target_ulong pc)
 
 static inline unsigned int tb_jmp_cache_hash_func(target_ulong pc)
 {
-    target_ulong tmp;
-    tmp = pc ^ (pc >> (TARGET_PAGE_BITS - TB_JMP_PAGE_BITS));
-    return (((tmp >> (TARGET_PAGE_BITS - TB_JMP_PAGE_BITS)) & TB_JMP_PAGE_MASK)
-           | (tmp & TB_JMP_ADDR_MASK));
+    pc = pc ^ (pc >> (TARGET_PAGE_BITS - TB_JMP_PAGE_BITS));
+    return (((pc >> (TARGET_PAGE_BITS - TB_JMP_PAGE_BITS)) & TB_JMP_PAGE_MASK)
+           | (pc & TB_JMP_ADDR_MASK));
 }
 
 #else
@@ -61,7 +60,7 @@ static inline
 uint32_t tb_hash_func(tb_page_addr_t phys_pc, target_ulong pc, uint32_t flags,
                       uint32_t cf_mask, uint32_t trace_vcpu_dstate)
 {
-    return tb_hash_func7(phys_pc, pc, flags, cf_mask, trace_vcpu_dstate);
+    return qemu_xxhash7(phys_pc, pc, flags, cf_mask, trace_vcpu_dstate);
 }
 
 #endif

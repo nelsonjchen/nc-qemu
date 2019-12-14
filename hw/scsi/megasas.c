@@ -19,6 +19,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu-common.h"
 #include "hw/hw.h"
 #include "hw/pci/pci.h"
 #include "sysemu/dma.h"
@@ -26,6 +27,7 @@
 #include "hw/pci/msi.h"
 #include "hw/pci/msix.h"
 #include "qemu/iov.h"
+#include "qemu/module.h"
 #include "hw/scsi/scsi.h"
 #include "scsi/constants.h"
 #include "trace.h"
@@ -477,7 +479,7 @@ static MegasasCmd *megasas_enqueue_frame(MegasasState *s,
 {
     PCIDevice *pcid = PCI_DEVICE(s);
     MegasasCmd *cmd = NULL;
-    int frame_size = MFI_FRAME_SIZE * 16;
+    int frame_size = MEGASAS_MAX_SGE * sizeof(union mfi_sgl);
     hwaddr frame_size_p = frame_size;
     unsigned long index;
 
@@ -722,7 +724,7 @@ static int megasas_ctrl_get_info(MegasasState *s, MegasasCmd *cmd)
     PCIDeviceClass *pci_class = PCI_DEVICE_GET_CLASS(pci_dev);
     MegasasBaseClass *base_class = MEGASAS_DEVICE_GET_CLASS(s);
     struct mfi_ctrl_info info;
-    size_t dcmd_size = sizeof(info);
+    const size_t dcmd_size = sizeof(info);
     BusChild *kid;
     int num_pd_disks = 0;
 

@@ -21,6 +21,7 @@
 #include "qemu-common.h"
 #include "sysemu/bt.h"
 #include "qemu/main-loop.h"
+#include "qemu/sockets.h"
 
 #ifndef _WIN32
 # include <sys/ioctl.h>

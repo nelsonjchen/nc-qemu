@@ -52,7 +52,7 @@ int qemu_init_main_loop(Error **errp);
  * repeatedly calls main_loop_wait(false).
  *
  * Main loop services include file descriptor callbacks, bottom halves
- * and timers (defined in qemu-timer.h).  Bottom halves are similar to timers
+ * and timers (defined in qemu/timer.h).  Bottom halves are similar to timers
  * that execute immediately, but have a lower overhead and scheduling them
  * is wait-free, thread-safe and signal-safe.
  *
@@ -301,5 +301,20 @@ void qemu_fd_register(int fd);
 
 QEMUBH *qemu_bh_new(QEMUBHFunc *cb, void *opaque);
 void qemu_bh_schedule_idle(QEMUBH *bh);
+
+enum {
+    MAIN_LOOP_POLL_FILL,
+    MAIN_LOOP_POLL_ERR,
+    MAIN_LOOP_POLL_OK,
+};
+
+typedef struct MainLoopPoll {
+    int state;
+    uint32_t timeout;
+    GArray *pollfds;
+} MainLoopPoll;
+
+void main_loop_poll_add_notifier(Notifier *notify);
+void main_loop_poll_remove_notifier(Notifier *notify);
 
 #endif

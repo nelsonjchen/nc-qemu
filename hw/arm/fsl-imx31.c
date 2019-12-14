@@ -21,7 +21,6 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "cpu.h"
 #include "hw/arm/fsl-imx31.h"
 #include "sysemu/sysemu.h"
@@ -248,7 +247,7 @@ static void fsl_imx31_class_init(ObjectClass *oc, void *data)
     dc->realize = fsl_imx31_realize;
     dc->desc = "i.MX31 SOC";
     /*
-     * Reason: uses serial_hds in realize and the kzm board does not
+     * Reason: uses serial_hd in realize and the kzm board does not
      * support multiple CPUs
      */
     dc->user_creatable = false;

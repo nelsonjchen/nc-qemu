@@ -4,7 +4,7 @@
 # Aurelien Jarno <aurelien@aurel32.net>, 2013, 2014.
 msgid ""
 msgstr ""
-"Project-Id-Version: QEMU 1.4.50\n"
+"Project-Id-Version: QEMU 2.0.50\n"
 "Report-Msgid-Bugs-To: qemu-devel@nongnu.org\n"
 "POT-Creation-Date: 2018-07-18 07:56+0200\n"
 "PO-Revision-Date: 2014-07-28 23:25+0200\n"

@@ -4,18 +4,19 @@
 #include "libqos/pci-pc.h"
 
 static QOSOps qos_ops = {
-    .init_allocator = pc_alloc_init_flags,
-    .uninit_allocator = pc_alloc_uninit,
-    .qpci_init = qpci_init_pc,
+    .alloc_init = pc_alloc_init,
+    .qpci_new = qpci_new_pc,
     .qpci_free = qpci_free_pc,
     .shutdown = qtest_pc_shutdown,
 };
 
+GCC_FMT_ATTR(1, 0)
 QOSState *qtest_pc_vboot(const char *cmdline_fmt, va_list ap)
 {
     return qtest_vboot(&qos_ops, cmdline_fmt, ap);
 }
 
+GCC_FMT_ATTR(1, 2)
 QOSState *qtest_pc_boot(const char *cmdline_fmt, ...)
 {
     QOSState *qs;

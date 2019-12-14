@@ -339,7 +339,15 @@ static void serial_ioport_write(void *opaque, hwaddr addr, uint64_t val,
 {
     SerialState *s = opaque;
 
+    if (!(addr < 8)) {
+      static bool shown;
+      if (!shown) {
+        shown = true;
+        fprintf(stderr, "%s(%p,0x%08x)\n", __func__, opaque, (unsigned)addr);
+      }
+    }
     addr &= 7;
+
     trace_serial_ioport_write(addr, val);
     switch(addr) {
     default:
@@ -480,7 +488,15 @@ static uint64_t serial_ioport_read(void *opaque, hwaddr addr, unsigned size)
     SerialState *s = opaque;
     uint32_t ret;
 
+    if (!(addr < 8)) {
+      static bool shown;
+      if (!shown) {
+        shown = true;
+        fprintf(stderr, "%s(%p,0x%08x)\n", __func__, opaque, (unsigned)addr);
+      }
+    }
     addr &= 7;
+
     switch(addr) {
     default:
     case 0:
@@ -611,7 +627,7 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
     SerialState *s = opaque;
 
     if (s->wakeup) {
-        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+        qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
     }
     if(s->fcr & UART_FCR_FE) {
         int i;
@@ -876,13 +892,13 @@ static void serial_reset(void *opaque)
     s->lcr = 0;
     s->lsr = UART_LSR_TEMT | UART_LSR_THRE;
     s->msr = UART_MSR_DCD | UART_MSR_DSR | UART_MSR_CTS;
-    /* Default to 9600 baud, 1 start bit, 8 data bits, 1 stop bit, no parity. */
     s->divider = 0x0C;
     s->mcr = UART_MCR_OUT2;
     s->scr = 0;
     s->tsr_retry = 0;
     s->char_transmit_time = (NANOSECONDS_PER_SECOND / 9600) * 10;
     s->poll_msl = 0;
+    serial_update_parameters(s);
 
     s->timeout_ipending = 0;
     timer_del(s->fifo_timeout_timer);
@@ -983,6 +999,7 @@ SerialState *serial_init(int base, qemu_irq irq, int baudbase,
 
     s = g_malloc0(sizeof(SerialState));
 
+    s->it_shift = 0;
     s->irq = irq;
     s->baudbase = baudbase;
     qemu_chr_fe_init(&s->chr, chr, &error_abort);
@@ -997,15 +1014,15 @@ SerialState *serial_init(int base, qemu_irq irq, int baudbase,
 }
 
 /* Memory mapped interface */
-static uint64_t serial_mm_read(void *opaque, hwaddr addr,
-                               unsigned size)
+uint64_t serial_mm_read(void *opaque, hwaddr addr,
+                        unsigned size)
 {
     SerialState *s = opaque;
     return serial_ioport_read(s, addr >> s->it_shift, 1);
 }
 
-static void serial_mm_write(void *opaque, hwaddr addr,
-                            uint64_t value, unsigned size)
+void serial_mm_write(void *opaque, hwaddr addr,
+                     uint64_t value, unsigned size)
 {
     SerialState *s = opaque;
     value &= 255;
