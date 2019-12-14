@@ -17,6 +17,9 @@ jobs:
           MSYS2_ARCH: x86_64
     steps:
       - script: |
+          git submodule update --init --remote -- slirp
+        displayName: Update SLIRP submodule
+      - script: |
           choco install msys2 --params="/InstallDir:%CD:~0,2%\msys64 /NoUpdate /NoPath"
         displayName: Install MSYS2
       - script: |
