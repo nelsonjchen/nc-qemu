@@ -43,6 +43,8 @@ static const int ide_irq[2] = { 14, 15 };
 
 static ISADevice *pit; /* PIT i8254 */
 
+static bool bigendian;
+
 /* i8254 PIT is attached to the IRQ0 at PIC i8259 */
 
 static struct _loaderparams {
@@ -92,8 +94,9 @@ static int64_t load_kernel(void)
 #else
     big_endian = 0;
 #endif
-    kernel_size = load_elf(loaderparams.kernel_filename, cpu_mips_kseg0_to_phys,
-                           NULL, (uint64_t *)&entry, NULL,
+    kernel_size = load_elf(loaderparams.kernel_filename, NULL,
+                           cpu_mips_kseg0_to_phys, NULL,
+                           (uint64_t *)&entry, NULL,
                            (uint64_t *)&kernel_high, big_endian,
                            EM_MIPS, 1, 0);
     if (kernel_size >= 0) {
@@ -105,6 +108,9 @@ static int64_t load_kernel(void)
                      load_elf_strerror(kernel_size));
         exit(1);
     }
+
+    /* Set SP (needed for some kernels) - normally set by bootloader. */
+    //~ env->active_tc.gpr[29] = (entry + (kernel_size & 0xfffffffc)) + 0x1000;
 
     /* load initrd */
     initrd_size = 0;
@@ -161,7 +167,7 @@ static void main_cpu_reset(void *opaque)
 
 static const int sector_len = 32 * KiB;
 static
-void mips_r4k_init(MachineState *machine)
+void mips_init(MachineState *machine)
 {
     ram_addr_t ram_size = machine->ram_size;
     const char *kernel_filename = machine->kernel_filename;
@@ -183,7 +189,6 @@ void mips_r4k_init(MachineState *machine)
     ISABus *isa_bus;
     DriveInfo *hd[MAX_IDE_BUS * MAX_IDE_DEVS];
     DriveInfo *dinfo;
-    int be;
 
     /* init CPUs */
     cpu = MIPS_CPU(cpu_create(machine->cpu_type));
@@ -219,11 +224,7 @@ void mips_r4k_init(MachineState *machine)
     } else {
         bios_size = -1;
     }
-#ifdef TARGET_WORDS_BIGENDIAN
-    be = 1;
-#else
-    be = 0;
-#endif
+    g_assert(env_cpu(env)->bigendian == bigendian);
     if ((bios_size > 0) && (bios_size <= BIOS_SIZE)) {
         bios = g_new(MemoryRegion, 1);
         memory_region_init_ram(bios, NULL, "mips_r4k.bios", BIOS_SIZE,
@@ -234,12 +235,11 @@ void mips_r4k_init(MachineState *machine)
         load_image_targphys(filename, 0x1fc00000, BIOS_SIZE);
     } else if ((dinfo = drive_get(IF_PFLASH, 0, 0)) != NULL) {
         uint32_t mips_rom = 0x00400000;
-        if (!pflash_cfi01_register(0x1fc00000, NULL, "mips_r4k.bios", mips_rom,
+        if (!pflash_cfi01_register(0x1fc00000, "mips_r4k.bios", mips_rom,
                                    blk_by_legacy_dinfo(dinfo),
-                                   sector_len, mips_rom / sector_len,
-                                   4, 0, 0, 0, 0, be)) {
+                                   sector_len, 4, 0, 0, 0, 0, bigendian)) {
             fprintf(stderr, "qemu: Error registering flash memory.\n");
-	}
+        }
     } else if (!qtest_enabled()) {
         /* not fatal */
         warn_report("could not load MIPS bios '%s'", bios_name);
@@ -285,9 +285,29 @@ void mips_r4k_init(MachineState *machine)
     for(i = 0; i < MAX_IDE_BUS; i++)
         isa_ide_init(isa_bus, ide_iobase[i], ide_iobase2[i], ide_irq[i],
                      hd[MAX_IDE_DEVS * i],
-		     hd[MAX_IDE_DEVS * i + 1]);
+                     hd[MAX_IDE_DEVS * i + 1]);
 
     isa_create_simple(isa_bus, TYPE_I8042);
+}
+
+static
+void mips_r4k_init(MachineState *machine)
+{
+    /* Run MIPS system in standard endian mode. */
+#if defined(TARGET_WORDS_BIGENDIAN)
+    bigendian = true;
+#else
+    bigendian = false;
+#endif
+    mips_init(machine);
+}
+
+static
+void mipsel_r4k_init(MachineState *machine)
+{
+    /* Run MIPS system in little endian mode. */
+    bigendian = false;
+    mips_init(machine);
 }
 
 static void mips_machine_init(MachineClass *mc)
@@ -304,3 +324,11 @@ static void mips_machine_init(MachineClass *mc)
 }
 
 DEFINE_MACHINE("mips", mips_machine_init)
+
+static void mipsel_machine_init(MachineClass *mc)
+{
+    mc->desc = "misp r4k platform (little endian)";
+    mc->init = mipsel_r4k_init;
+};
+
+DEFINE_MACHINE("mipsel", mipsel_machine_init)

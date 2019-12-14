@@ -227,13 +227,14 @@ void error_propagate(Error **dst_errp, Error *local_err);
  *     error_propagate(dst_errp, local_err);
  */
 void error_propagate_prepend(Error **dst_errp, Error *local_err,
-                             const char *fmt, ...);
+                             const char *fmt, ...) GCC_FMT_ATTR(3, 4);
 
 /*
  * Prepend some text to @errp's human-readable error message.
  * The text is made by formatting @fmt, @ap like vprintf().
  */
-void error_vprepend(Error **errp, const char *fmt, va_list ap);
+void error_vprepend(Error **errp, const char *fmt, va_list ap)
+    GCC_FMT_ATTR(2, 0);
 
 /*
  * Prepend some text to @errp's human-readable error message.

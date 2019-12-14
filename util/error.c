@@ -14,7 +14,6 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "qemu/error-report.h"
 
 struct Error
@@ -34,7 +33,10 @@ static void error_handle_fatal(Error **errp, Error *err)
     if (errp == &error_abort) {
         fprintf(stderr, "Unexpected error in %s() at %s:%d:\n",
                 err->func, err->src, err->line);
-        error_report_err(err);
+        error_report("%s", error_get_pretty(err));
+        if (err->hint) {
+            error_printf("%s", err->hint->str);
+        }
         abort();
     }
     if (errp == &error_fatal) {
@@ -43,10 +45,11 @@ static void error_handle_fatal(Error **errp, Error *err)
     }
 }
 
-static void error_setv(Error **errp,
-                       const char *src, int line, const char *func,
-                       ErrorClass err_class, const char *fmt, va_list ap,
-                       const char *suffix)
+static GCC_FMT_ATTR(6, 0)
+void error_setv(Error **errp,
+                const char *src, int line, const char *func,
+                ErrorClass err_class, const char *fmt, va_list ap,
+                const char *suffix)
 {
     Error *err;
     int saved_errno = errno;
@@ -102,10 +105,6 @@ void error_setg_errno_internal(Error **errp,
 {
     va_list ap;
     int saved_errno = errno;
-
-    if (errp == NULL) {
-        return;
-    }
 
     va_start(ap, fmt);
     error_setv(errp, src, line, func, ERROR_CLASS_GENERIC_ERROR, fmt, ap,
@@ -227,7 +226,7 @@ void error_report_err(Error *err)
 {
     error_report("%s", error_get_pretty(err));
     if (err->hint) {
-        error_printf_unless_qmp("%s", err->hint->str);
+        error_printf("%s", err->hint->str);
     }
     error_free(err);
 }
@@ -236,7 +235,7 @@ void warn_report_err(Error *err)
 {
     warn_report("%s", error_get_pretty(err));
     if (err->hint) {
-        error_printf_unless_qmp("%s", err->hint->str);
+        error_printf("%s", err->hint->str);
     }
     error_free(err);
 }

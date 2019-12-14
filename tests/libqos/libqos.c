@@ -14,6 +14,7 @@
  * Never returns NULL:
  * Terminates the application in case an error is encountered.
  */
+GCC_FMT_ATTR(2, 0)
 QOSState *qtest_vboot(QOSOps *ops, const char *cmdline_fmt, va_list ap)
 {
     char *cmdline;
@@ -24,8 +25,8 @@ QOSState *qtest_vboot(QOSOps *ops, const char *cmdline_fmt, va_list ap)
     qs->qts = qtest_init(cmdline);
     qs->ops = ops;
     if (ops) {
-        qs->alloc = ops->init_allocator(qs->qts, ALLOC_NO_FLAGS);
-        qs->pcibus = ops->qpci_init(qs->qts, qs->alloc);
+        ops->alloc_init(&qs->alloc, qs->qts, ALLOC_NO_FLAGS);
+        qs->pcibus = ops->qpci_new(qs->qts, &qs->alloc);
     }
 
     g_free(cmdline);
@@ -36,6 +37,7 @@ QOSState *qtest_vboot(QOSOps *ops, const char *cmdline_fmt, va_list ap)
  * Launch QEMU with the given command line,
  * and then set up interrupts and our guest malloc interface.
  */
+GCC_FMT_ATTR(2, 3)
 QOSState *qtest_boot(QOSOps *ops, const char *cmdline_fmt, ...)
 {
     QOSState *qs;
@@ -58,11 +60,8 @@ void qtest_common_shutdown(QOSState *qs)
             qs->ops->qpci_free(qs->pcibus);
             qs->pcibus = NULL;
         }
-        if (qs->alloc && qs->ops->uninit_allocator) {
-            qs->ops->uninit_allocator(qs->alloc);
-            qs->alloc = NULL;
-        }
     }
+    alloc_destroy(&qs->alloc);
     qtest_quit(qs->qts);
     g_free(qs);
 }
@@ -76,11 +75,6 @@ void qtest_shutdown(QOSState *qs)
     }
 }
 
-void set_context(QOSState *s)
-{
-    global_qtest = s->qts;
-}
-
 static QDict *qmp_execute(QTestState *qts, const char *command)
 {
     return qtest_qmp(qts, "{ 'execute': %s }", command);
@@ -91,8 +85,6 @@ void migrate(QOSState *from, QOSState *to, const char *uri)
     const char *st;
     QDict *rsp, *sub;
     bool running;
-
-    set_context(from);
 
     /* Is the machine currently running? */
     rsp = qmp_execute(from->qts, "query-status");
@@ -116,8 +108,7 @@ void migrate(QOSState *from, QOSState *to, const char *uri)
 
     /* If we were running, we can wait for an event. */
     if (running) {
-        migrate_allocator(from->alloc, to->alloc);
-        set_context(to);
+        migrate_allocator(&from->alloc, &to->alloc);
         qtest_qmp_eventwait(to->qts, "RESUME");
         return;
     }
@@ -146,8 +137,7 @@ void migrate(QOSState *from, QOSState *to, const char *uri)
         g_assert_not_reached();
     }
 
-    migrate_allocator(from->alloc, to->alloc);
-    set_context(to);
+    migrate_allocator(&from->alloc, &to->alloc);
 }
 
 bool have_qemu_img(void)

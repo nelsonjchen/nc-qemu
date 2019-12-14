@@ -24,7 +24,6 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "cpu.h"
 #include "hw/arm/fsl-imx25.h"
 #include "sysemu/sysemu.h"
@@ -276,7 +275,7 @@ static void fsl_imx25_class_init(ObjectClass *oc, void *data)
     dc->realize = fsl_imx25_realize;
     dc->desc = "i.MX25 SOC";
     /*
-     * Reason: uses serial_hds in realize and the imx25 board does not
+     * Reason: uses serial_hd in realize and the imx25 board does not
      * support multiple CPUs
      */
     dc->user_creatable = false;

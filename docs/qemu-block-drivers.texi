@@ -382,6 +382,8 @@ change or eject media.
 @item Hard disks
 Hard disks can be used with the syntax: @file{\\.\PhysicalDrive@var{N}}
 where @var{N} is the drive number (0 is the first hard disk).
+@file{/dev/hda} is supported as an alias to
+the first hard disk drive @file{\\.\PhysicalDrive0}.
 
 WARNING: unless you know what you do, it is better to only make
 READ-ONLY accesses to the hard disk otherwise you may corrupt your
@@ -632,7 +634,7 @@ qemu-system-i386 -drive file=iscsi://127.0.0.1/iqn.qemu.test/1 \
 @end example
 
 
-Howto set up a simple iSCSI target on loopback and accessing it via QEMU:
+How to set up a simple iSCSI target on loopback and access it via QEMU:
 @example
 This example shows how to set up an iSCSI target with one CDROM and one DISK
 using the Linux STGT software target. This target is available on Red Hat based
@@ -782,7 +784,7 @@ print a warning when @code{fsync} is not supported:
 
 warning: ssh server @code{ssh.example.com:22} does not support fsync
 
-With sufficiently new versions of libssh2 and OpenSSH, @code{fsync} is
+With sufficiently new versions of libssh and OpenSSH, @code{fsync} is
 supported.
 
 @node disk_images_nvme

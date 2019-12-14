@@ -9,7 +9,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
+#include "qemu/module.h"
 #include "cpu.h"
 #include "hw/hw.h"
 #include "hw/arm/pxa.h"
@@ -206,7 +206,6 @@ static void pxa2xx_pic_mem_write(void *opaque, hwaddr offset,
 
 /* Interrupt Controller Coprocessor Space Register Mapping */
 static const int pxa2xx_cp_reg_map[0x10] = {
-    [0x0 ... 0xf] = -1,
     [0x0] = ICIP,
     [0x1] = ICMR,
     [0x2] = ICLR,
@@ -218,6 +217,7 @@ static const int pxa2xx_cp_reg_map[0x10] = {
     [0x8] = ICLR2,
     [0x9] = ICFP2,
     [0xa] = ICPR2,
+    [0xb ... 0xf] = -1,
 };
 
 static uint64_t pxa2xx_pic_cp_read(CPUARMState *env, const ARMCPRegInfo *ri)

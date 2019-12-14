@@ -26,6 +26,9 @@
 #include "sysemu/kvm.h"
 #include "internal.h"
 
+/* Timer on Sinus 154 DSL Basic SE (Openwrt) needs a lower frequency. */
+//#define TIMER_PERIOD 100
+
 #define TIMER_PERIOD 10 /* 10 ns period for 100 Mhz frequency */
 
 /* XXX: do not use a global */
@@ -52,6 +55,12 @@ uint32_t cpu_mips_get_random (CPUMIPSState *env)
 }
 
 /* MIPS R4K timer */
+
+static int cpu_mips_timer_disabled(CPUMIPSState *env)
+{
+  return env->CP0_Cause & (1 << CP0Ca_DC);
+}
+
 static void cpu_mips_timer_update(CPUMIPSState *env)
 {
     uint64_t now, next;
@@ -75,20 +84,17 @@ static void cpu_mips_timer_expire(CPUMIPSState *env)
 
 uint32_t cpu_mips_get_count (CPUMIPSState *env)
 {
-    if (env->CP0_Cause & (1 << CP0Ca_DC)) {
-        return env->CP0_Count;
-    } else {
-        uint64_t now;
-
-        now = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
+    uint32_t value = env->CP0_Count;
+    if (!cpu_mips_timer_disabled(env)) {
+        int64_t now = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
+        value += (uint32_t)(now / TIMER_PERIOD);
         if (timer_pending(env->timer)
             && timer_expired(env->timer, now)) {
             /* The timer has already expired.  */
             cpu_mips_timer_expire(env);
         }
-
-        return env->CP0_Count + (uint32_t)(now / TIMER_PERIOD);
     }
+    return value;
 }
 
 void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
@@ -98,25 +104,32 @@ void cpu_mips_store_count (CPUMIPSState *env, uint32_t count)
      * So env->timer may be NULL, which is also the case with KVM enabled so
      * treat timer as disabled in that case.
      */
-    if (env->CP0_Cause & (1 << CP0Ca_DC) || !env->timer)
+    if (cpu_mips_timer_disabled(env) || !env->timer) {
         env->CP0_Count = count;
-    else {
+    } else {
         /* Store new count register */
         env->CP0_Count = count -
                (uint32_t)(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) / TIMER_PERIOD);
         /* Update timer timer */
         cpu_mips_timer_update(env);
+#if 0
+        cpu_mips_timer_triggered = 1;
+#endif
     }
 }
 
 void cpu_mips_store_compare (CPUMIPSState *env, uint32_t value)
 {
     env->CP0_Compare = value;
-    if (!(env->CP0_Cause & (1 << CP0Ca_DC)))
+    if (!cpu_mips_timer_disabled(env)) {
         cpu_mips_timer_update(env);
+    }
     if (env->insn_flags & ISA_MIPS32R2)
         env->CP0_Cause &= ~(1 << CP0Ca_TI);
     qemu_irq_lower(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
+#if 0
+    cpu_mips_timer_triggered = 0;
+#endif
 }
 
 void cpu_mips_start_count(CPUMIPSState *env)
@@ -131,7 +144,7 @@ void cpu_mips_stop_count(CPUMIPSState *env)
                                  TIMER_PERIOD);
 }
 
-static void mips_timer_cb (void *opaque)
+static void mips_timer_cb(void *opaque)
 {
     CPUMIPSState *env;
 
@@ -140,8 +153,9 @@ static void mips_timer_cb (void *opaque)
     qemu_log("%s\n", __func__);
 #endif
 
-    if (env->CP0_Cause & (1 << CP0Ca_DC))
+    if (cpu_mips_timer_disabled(env)) {
         return;
+    }
 
     /* ??? This callback should occur when the counter is exactly equal to
        the comparator value.  Offset the count by one to avoid immediately
@@ -149,6 +163,12 @@ static void mips_timer_cb (void *opaque)
     env->CP0_Count++;
     cpu_mips_timer_expire(env);
     env->CP0_Count--;
+#if 0
+    if (env->insn_flags & ISA_MIPS32R2)
+        env->CP0_Cause |= 1 << CP0Ca_TI;
+    qemu_irq_raise(env->irq[(env->CP0_IntCtl >> CP0IntCtl_IPTI) & 0x7]);
+    cpu_mips_timer_triggered = 1;
+#endif
 }
 
 void cpu_mips_clock_init (MIPSCPU *cpu)

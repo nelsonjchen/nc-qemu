@@ -35,7 +35,7 @@
 
 #define UART_FIFO_LENGTH    16      /* 16550A Fifo Length */
 
-struct SerialState {
+typedef struct SerialState {
     uint16_t divider;
     uint8_t rbr; /* receive register */
     uint8_t thr; /* transmit holding register */
@@ -55,6 +55,7 @@ struct SerialState {
     int thr_ipending;
     qemu_irq irq;
     CharBackend chr;
+    hwaddr base;
     int last_break_enable;
     int it_shift;
     int baudbase;
@@ -77,7 +78,7 @@ struct SerialState {
 
     QEMUTimer *modem_status_poll;
     MemoryRegion io;
-};
+} SerialState;
 
 extern const VMStateDescription vmstate_serial;
 extern const MemoryRegionOps serial_io_ops;
@@ -85,6 +86,11 @@ extern const MemoryRegionOps serial_io_ops;
 void serial_realize_core(SerialState *s, Error **errp);
 void serial_exit_core(SerialState *s);
 void serial_set_frequency(SerialState *s, uint32_t frequency);
+
+SerialState *serial_16550_init(int base, qemu_irq irq, Chardev *chr);
+uint64_t serial_mm_read(void *opaque, hwaddr addr, unsigned size);
+void serial_mm_write(void *opaque, hwaddr addr,
+                     uint64_t value, unsigned size);
 
 /* legacy pre qom */
 SerialState *serial_init(int base, qemu_irq irq, int baudbase,

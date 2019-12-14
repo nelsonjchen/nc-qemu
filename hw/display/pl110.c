@@ -14,6 +14,7 @@
 #include "ui/pixel_ops.h"
 #include "qemu/timer.h"
 #include "qemu/log.h"
+#include "qemu/module.h"
 
 #define PL110_CR_EN   0x001
 #define PL110_CR_BGR  0x100
@@ -448,6 +449,10 @@ static void pl110_write(void *opaque, hwaddr offset,
     control:
         s->cr = val;
         s->bpp = (val >> 1) & 7;
+#if 1 /* TODO */
+        /* Calling qemu_console_resize from TCG context was disabled here.
+           It causes a deadlock on Windows. Nevertheless it had to be
+           enabled again because otherwise Debian ARM crashes very early. */
         if (pl110_enabled(s)) {
             qemu_console_resize(s->con, s->cols, s->rows);
             timer_mod(s->vblank_timer,
@@ -456,6 +461,7 @@ static void pl110_write(void *opaque, hwaddr offset,
         } else {
             timer_del(s->vblank_timer);
         }
+#endif
         break;
     case 10: /* LCDICR */
         s->int_status &= ~val;

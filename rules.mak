@@ -23,6 +23,9 @@ MAKEFLAGS += -rR
 %.mak:
 clean-target:
 
+# Flags for C++ compilation
+QEMU_CXXFLAGS := -D__STDC_LIMIT_MACROS $(filter-out -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs -Wno-override-init -Wold-style-declaration -Wold-style-definition -Wredundant-decls, ${QEMU_CXXFLAGS})
+
 # Flags for dependency generation
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 
@@ -103,7 +106,11 @@ LINK = $(call quiet-command, $(LINKPROG) $(QEMU_LDFLAGS) $(QEMU_CFLAGS) $(CFLAGS
 %.o: %.dtrace
 	$(call quiet-command,dtrace -o $@ -G -s $<,"GEN","$(TARGET_DIR)$@")
 
+ifdef CONFIG_WIN32
+DSO_OBJ_CFLAGS := -DBUILD_DSO
+else
 DSO_OBJ_CFLAGS := -fPIC -DBUILD_DSO
+endif
 module-common.o: CFLAGS += $(DSO_OBJ_CFLAGS)
 %$(DSOSUF): LDFLAGS += $(LDFLAGS_SHARED)
 %$(DSOSUF): %.mo
@@ -132,7 +139,9 @@ modules:
 #  otherwise print the 'quiet' output in the format "  NAME     args to print"
 # NAME should be a short name of the command, 7 letters or fewer.
 # If called with only a single argument, will print nothing in quiet mode.
-quiet-command = $(if $(V),$1,$(if $(2),@printf "  %-7s %s\n" $2 $3 && $1, @$1))
+quiet-command-run = $(if $(V),,$(if $2,printf "  %-7s %s\n" $2 $3 && ))$1
+quiet-@ = $(if $(V),,@)
+quiet-command = $(quiet-@)$(call quiet-command-run,$1,$2,$3)
 
 # cc-option
 # Usage: CFLAGS+=$(call cc-option, -falign-functions=0, -malign-functions=0)
@@ -142,7 +151,7 @@ cc-option = $(if $(shell $(CC) $1 $2 -S -o /dev/null -xc /dev/null \
 cc-c-option = $(if $(shell $(CC) $1 $2 -c -o /dev/null -xc /dev/null \
                 >/dev/null 2>&1 && echo OK), $2, $3)
 
-VPATH_SUFFIXES = %.c %.h %.S %.cc %.cpp %.m %.mak %.texi %.sh %.rc
+VPATH_SUFFIXES = %.c %.h %.S %.cc %.cpp %.m %.mak %.texi %.sh %.rc Kconfig% %.json.in
 set-vpath = $(if $1,$(foreach PATTERN,$(VPATH_SUFFIXES),$(eval vpath $(PATTERN) $1)))
 
 # install-prog list, dir
@@ -325,7 +334,7 @@ endef
 #     ../water/ice.mo-libs = -licemaker
 #     ../water/ice.mo-objs = ../water/ice1.o ../water/ice2.o
 #
-# Note that 'hot' didn't include 'season/' in the input, so 'summer.o' is not
+# Note that 'hot' didn't include 'water/' in the input, so 'steam.o' is not
 # included.
 #
 define unnest-vars
@@ -390,3 +399,10 @@ TEXI2MAN = $(call quiet-command, \
 	$(call TEXI2MAN)
 %.8:
 	$(call TEXI2MAN)
+
+GEN_SUBST = $(call quiet-command, \
+	sed -e "s!@libexecdir@!$(libexecdir)!g" < $< > $@, \
+	"GEN","$@")
+
+%.json: %.json.in
+	$(call GEN_SUBST)
